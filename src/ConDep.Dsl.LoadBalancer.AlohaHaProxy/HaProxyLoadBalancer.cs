@@ -53,6 +53,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
                 throw new ConDepLoadBalancerException(string.Format("Failed to take server {0} offline in loadbalancer. Returned status code was {1} with reason: {2}", serverName, result.StatusCode, result.ReasonPhrase));
             }
 
+            Logger.Verbose("Waiting for server connections to drain.");
             WaitForCurrentConnectionsToDrain(farm, serverName, _snmpEndpoint, _snmpPort, _snmpCommunity, DateTime.Now.AddSeconds(_config.TimeoutInSeconds));
         }
 
@@ -82,8 +83,12 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
         {
             var cmd = GetServerStateCommand(serverState);
             var client = new HttpClient {BaseAddress = new Uri(_config.Name)};
+            Logger.Verbose("Connecting to load balancer using " + client.BaseAddress);
+
             var request = new HttpRequestMessage(HttpMethod.Put,
                 _config.Name + "/api/2/scope/" + _scope + "/l7/farm/" + farm + "/server/" + serverName);
+            Logger.Verbose("Executing PUT command to " + request.RequestUri);
+
             request.Headers.Accept.Clear();
             request.Headers.Add("Authorization",
                 "Basic " +
@@ -102,7 +107,10 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
         {
             if (DateTime.Now > timeout) throw new ConDepLoadBalancerException(string.Format("Timed out while taking {0} offline in load balancer.", server));
 
+            Logger.Verbose("Connecting to snmp using " + snmpEndpoint + " on port " + snmpPort + " with community " + snmpCommunity);
             var snmp = new SimpleSnmp(snmpEndpoint, snmpPort, snmpCommunity);
+            
+            Logger.Verbose("Getting snmp info about farm " + farm);
             var farmResult = snmp.Walk(SnmpVersion.Ver2, FARM_NAMES_OID);
             var farmOid = farmResult.Single(x => x.Value.Clone().ToString() == farm);
 
@@ -110,6 +118,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             var start = farmOid.Key.ToString().LastIndexOf(".");
             var farmSubId = id.Substring(start + 1, id.Length - start - 1);
 
+            Logger.Verbose("Getting snmp info about server " + server);
             var serverResult = snmp.Walk(SnmpVersion.Ver2, SERVER_NAMES_OID + farmSubId);
             var serverOid = serverResult.Single(x => x.Value.Clone().ToString() == server);
 
@@ -117,17 +126,20 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             start = serverOid.Key.ToString().LastIndexOf(".");
             var serverSubId = serverId.Substring(start + 1, serverId.Length - start - 1);
 
+            Logger.Verbose("Getting current server sessions for server " + server);
             var pdu = Pdu.GetPdu();
             pdu.VbList.Add(SERVER_CUR_SESSIONS_OID + farmSubId + "." + serverSubId);
             var currentSessionsVal = snmp.Get(SnmpVersion.Ver2, pdu);
             var val = currentSessionsVal.Single().Value.Clone() as Counter64;
             if (val > 0)
             {
+                Logger.Verbose("Server " + server + " has " + val + " active sessions.");
                 var waitInterval = 3;
                 Logger.Warn(string.Format("There are still {0} active connections on server {1}. Waiting {2} second before retry.", val, server, waitInterval));
                 Thread.Sleep(1000 * waitInterval);
                 WaitForCurrentConnectionsToDrain(farm, server, snmpEndpoint, snmpPort, snmpCommunity, timeout);
             }
+            Logger.Verbose("Server " + server + " has 0 active session and is now offline.");
         }
 
         public LbMode Mode { get; set; }
