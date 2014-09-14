@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConDep.Dsl.LoadBalancer.AlohaHaProxy", "ConDep.Dsl.LoadBalancer.AlohaHaProxy\ConDep.Dsl.LoadBalancer.AlohaHaProxy.csproj", "{4A96A09A-8DED-4A74-8DCD-E7DFA0C78250}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests", "ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests\ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests.csproj", "{B41F9816-CF00-4AF2-95FF-4F95792AEDFA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{4A96A09A-8DED-4A74-8DCD-E7DFA0C78250}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A96A09A-8DED-4A74-8DCD-E7DFA0C78250}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A96A09A-8DED-4A74-8DCD-E7DFA0C78250}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B41F9816-CF00-4AF2-95FF-4F95792AEDFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B41F9816-CF00-4AF2-95FF-4F95792AEDFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B41F9816-CF00-4AF2-95FF-4F95792AEDFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B41F9816-CF00-4AF2-95FF-4F95792AEDFA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
