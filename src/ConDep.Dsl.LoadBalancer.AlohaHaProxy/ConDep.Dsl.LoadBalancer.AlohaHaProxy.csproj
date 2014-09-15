@@ -31,9 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ConDep.Dsl, Version=3.0.46.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="ConDep.Dsl, Version=3.0.50.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\ConDep.Dsl.3.0.46-beta\lib\net40\ConDep.Dsl.dll</HintPath>
+      <HintPath>..\packages\ConDep.Dsl.3.0.50-beta\lib\net40\ConDep.Dsl.dll</HintPath>
     </Reference>
     <Reference Include="log4net, Version=1.2.11.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
