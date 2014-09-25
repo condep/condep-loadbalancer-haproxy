@@ -16,6 +16,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
         private string _snmpEndpoint;
         private int _snmpPort;
         private string _snmpCommunity;
+        private int _waitTimeInSecondsAfterMaintenanceModeChanged;
 
         private enum ServerState
         {
@@ -41,6 +42,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             _scope = config.CustomConfig.Scope ?? "root";
             _snmpPort = config.CustomConfig.SnmpPort ?? 161;
             _snmpCommunity = config.CustomConfig.SnmpCommunity ?? "public";
+            _waitTimeInSecondsAfterMaintenanceModeChanged = config.CustomConfig.WaitTimeInSecondsAfterMaintenanceModeChanged ?? 5;
         }
 
         public void BringOffline(string serverName, string farm, LoadBalancerSuspendMethod suspendMethod, IReportStatus status)
@@ -51,6 +53,8 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             {
                 throw new ConDepLoadBalancerException(string.Format("Failed to take server {0} offline in loadbalancer. Returned status code was {1} with reason: {2}", serverName, result.StatusCode, result.ReasonPhrase));
             }
+            Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to set server i maintenance mode.", _waitTimeInSecondsAfterMaintenanceModeChanged));
+            Thread.Sleep(_waitTimeInSecondsAfterMaintenanceModeChanged * 1000);
 
             Logger.Verbose("Waiting for server connections to drain.");
             WaitForCurrentConnectionsToDrain(farm, serverName, _snmpEndpoint, _snmpPort, _snmpCommunity, DateTime.Now.AddSeconds(_config.TimeoutInSeconds));
@@ -64,6 +68,9 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             {
                 throw new ConDepLoadBalancerException(string.Format("Failed to take server {0} online in loadbalancer. Returned status code was {1} with reason: {2}", serverName, result.StatusCode, result.ReasonPhrase));
             }
+
+            Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to get server out of maintenance mode.", _waitTimeInSecondsAfterMaintenanceModeChanged));
+            Thread.Sleep(_waitTimeInSecondsAfterMaintenanceModeChanged * 1000);
         }
 
         private static string GetServerStateCommand(ServerState serverState)
