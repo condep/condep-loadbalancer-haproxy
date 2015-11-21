@@ -12,11 +12,12 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
     public class HaProxyLoadBalancer : ILoadBalance
     {
         private readonly LoadBalancerConfig _config;
-        private string _scope;
-        private string _snmpEndpoint;
-        private int _snmpPort;
-        private string _snmpCommunity;
-        private int _waitTimeInSecondsAfterMaintenanceModeChanged;
+        private readonly string _scope;
+        private readonly string _snmpEndpoint;
+        private readonly int _snmpPort;
+        private readonly string _snmpCommunity;
+        private readonly int _waitTimeInSecondsAfterSettingServerStateToOffline;
+        private readonly int _waitTimeInSecondsAfterSettingServerStateToOnline;
 
         private enum ServerState
         {
@@ -24,25 +25,25 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             Offline
         }
 
+        public LbMode Mode { get; set; }
+
         public HaProxyLoadBalancer(LoadBalancerConfig config)
         {
             _config = config;
-            if (config.CustomConfig == null) throw new ConDepLoadBalancerException("No config found in section CustomConfig under load balancer. HaProxy requires CustomConfig for at least SnmpEndpoint.");
 
-            if (config.CustomConfig.SnmpEndpoint != null)
-            {
-                _snmpEndpoint = config.CustomConfig.SnmpEndpoint;
-            }
-            else
-            {
-                throw new ConDepLoadBalancerException(
-                    "No SNMP endpoint exist in configuration. Please add this under CustomConfig.");
-            }
+            if (config.CustomConfig == null)
+                throw new ConDepLoadBalancerException("No config found in section CustomConfig under load balancer. HaProxy requires CustomConfig for at least SnmpEndpoint.");
 
+            if (config.CustomConfig.SnmpEndpoint == null)
+                throw new ConDepLoadBalancerException("No SnmpEndpoint exist in configuration. Please add this under CustomConfig.");
+
+             _snmpEndpoint = config.CustomConfig.SnmpEndpoint;
             _scope = config.CustomConfig.Scope ?? "root";
             _snmpPort = config.CustomConfig.SnmpPort ?? 161;
             _snmpCommunity = config.CustomConfig.SnmpCommunity ?? "public";
-            _waitTimeInSecondsAfterMaintenanceModeChanged = config.CustomConfig.WaitTimeInSecondsAfterMaintenanceModeChanged ?? 5;
+
+            _waitTimeInSecondsAfterSettingServerStateToOffline = config.CustomConfig.WaitTimeInSecondsAfterSettingServerStateToOffline ?? config.CustomConfig.WaitTimeInSecondsAfterMaintenanceModeChanged ?? 5;
+            _waitTimeInSecondsAfterSettingServerStateToOnline = config.CustomConfig.WaitTimeInSecondsAfterSettingServerStateToOnline ?? config.CustomConfig.WaitTimeInSecondsAfterMaintenanceModeChanged ?? 5;
         }
 
         public void BringOffline(string serverName, string farm, LoadBalancerSuspendMethod suspendMethod, IReportStatus status)
@@ -50,11 +51,10 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             var result = ChangeServerState(serverName, farm, ServerState.Offline);
 
             if (!result.IsSuccessStatusCode)
-            {
                 throw new ConDepLoadBalancerException(string.Format("Failed to take server {0} offline in loadbalancer. Returned status code was {1} with reason: {2}", serverName, result.StatusCode, result.ReasonPhrase));
-            }
-            Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to set server i maintenance mode.", _waitTimeInSecondsAfterMaintenanceModeChanged));
-            Thread.Sleep(_waitTimeInSecondsAfterMaintenanceModeChanged * 1000);
+
+            Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to set server i maintenance mode.", _waitTimeInSecondsAfterSettingServerStateToOffline));
+            Thread.Sleep(_waitTimeInSecondsAfterSettingServerStateToOffline * 1000);
 
             Logger.Verbose("Waiting for server connections to drain.");
             WaitForCurrentConnectionsToDrain(farm, serverName, _snmpEndpoint, _snmpPort, _snmpCommunity, DateTime.Now.AddSeconds(_config.TimeoutInSeconds));
@@ -65,12 +65,10 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             var result = ChangeServerState(serverName, farm, ServerState.Online);
 
             if (!result.IsSuccessStatusCode)
-            {
                 throw new ConDepLoadBalancerException(string.Format("Failed to take server {0} online in loadbalancer. Returned status code was {1} with reason: {2}", serverName, result.StatusCode, result.ReasonPhrase));
-            }
 
-            Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to get server out of maintenance mode.", _waitTimeInSecondsAfterMaintenanceModeChanged));
-            Thread.Sleep(_waitTimeInSecondsAfterMaintenanceModeChanged * 1000);
+            Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to get server out of maintenance mode.", _waitTimeInSecondsAfterSettingServerStateToOnline));
+            Thread.Sleep(_waitTimeInSecondsAfterSettingServerStateToOnline * 1000);
         }
 
         private static string GetServerStateCommand(ServerState serverState)
@@ -82,6 +80,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
                 case ServerState.Online:
                     return "null";
             }
+
             throw new ConDepLoadBalancerException("Server state for command unknown");
         }
 
@@ -91,16 +90,15 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             var client = new HttpClient {BaseAddress = new Uri(_config.Name)};
             Logger.Verbose("Connecting to load balancer using " + client.BaseAddress);
 
-            var request = new HttpRequestMessage(HttpMethod.Put,
-                _config.Name + "/api/2/scope/" + _scope + "/l7/farm/" + farm + "/server/" + serverName);
+            var request = new HttpRequestMessage(HttpMethod.Put,_config.Name + "/api/2/scope/" + _scope + "/l7/farm/" + farm + "/server/" + serverName);
             Logger.Verbose("Executing PUT command to " + request.RequestUri);
 
             request.Headers.Accept.Clear();
-            request.Headers.Add("Authorization",
-                "Basic " +
-                Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", _config.UserName, _config.Password))));
+            request.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", _config.UserName, _config.Password))));
             request.Content = new StringContent(string.Format("{{ \"maintenance\" : {0} }}", cmd), Encoding.ASCII, "application/json");
+
             var result = client.SendAsync(request).Result;
+
             return result;
         }
 
@@ -108,10 +106,10 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
         private const string SERVER_NAMES_OID        = ".1.3.6.1.4.1.23263.4.2.1.3.4.1.4.1.";
         private const string SERVER_CUR_SESSIONS_OID = ".1.3.6.1.4.1.23263.4.2.1.3.4.1.8.1.";
 
-
         private void WaitForCurrentConnectionsToDrain(string farm, string server, string snmpEndpoint, int snmpPort, string snmpCommunity, DateTime timeout)
         {
-            if (DateTime.Now > timeout) throw new ConDepLoadBalancerException(string.Format("Timed out while taking {0} offline in load balancer.", server));
+            if (DateTime.Now > timeout)
+                throw new ConDepLoadBalancerException(string.Format("Timed out while taking {0} offline in load balancer.", server));
 
             Logger.Verbose("Connecting to snmp using " + snmpEndpoint + " on port " + snmpPort + " with community " + snmpCommunity);
             var snmp = new SimpleSnmp(snmpEndpoint, snmpPort, snmpCommunity);
@@ -137,6 +135,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             pdu.VbList.Add(SERVER_CUR_SESSIONS_OID + farmSubId + "." + serverSubId);
             var currentSessionsVal = snmp.Get(SnmpVersion.Ver2, pdu);
             var val = currentSessionsVal.Single().Value.Clone() as Counter64;
+
             if (val > 0)
             {
                 Logger.Verbose("Server " + server + " has " + val + " active sessions.");
@@ -145,9 +144,8 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
                 Thread.Sleep(1000 * waitInterval);
                 WaitForCurrentConnectionsToDrain(farm, server, snmpEndpoint, snmpPort, snmpCommunity, timeout);
             }
+
             Logger.Verbose("Server " + server + " has 0 active session and is now offline.");
         }
-
-        public LbMode Mode { get; set; }
     }
 }
