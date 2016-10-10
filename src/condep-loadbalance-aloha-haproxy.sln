@@ -1,11 +1,18 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConDep.Dsl.LoadBalancer.AlohaHaProxy", "ConDep.Dsl.LoadBalancer.AlohaHaProxy\ConDep.Dsl.LoadBalancer.AlohaHaProxy.csproj", "{4A96A09A-8DED-4A74-8DCD-E7DFA0C78250}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests", "ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests\ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests.csproj", "{B41F9816-CF00-4AF2-95FF-4F95792AEDFA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{D2F6D06F-F6FE-4CE0-9FF2-6AC8DA550534}"
+	ProjectSection(SolutionItems) = preProject
+		..\build\buildRelease.ps1 = ..\build\buildRelease.ps1
+		..\build\default.ps1 = ..\build\default.ps1
+		..\build\install.ps1 = ..\build\install.ps1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
