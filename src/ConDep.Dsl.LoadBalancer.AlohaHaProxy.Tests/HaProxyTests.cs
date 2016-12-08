@@ -52,8 +52,8 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests
         {
             var memStream = new MemoryStream(Encoding.UTF8.GetBytes(_json));
 
-            var parser = new EnvConfigParser();
-            _config = parser.GetTypedEnvConfig(memStream, null);
+            //var parser = new EnvConfigParser();
+            //_config = parser.GetTypedEnvConfig(memStream, null);
         }
 
         [Test]

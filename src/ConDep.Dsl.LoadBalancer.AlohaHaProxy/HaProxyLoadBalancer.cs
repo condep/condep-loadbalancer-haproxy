@@ -25,7 +25,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             Offline
         }
 
-        public LbMode Mode { get; set; }
+        LoadBalancerMode ILoadBalance.Mode { get; set; }
 
         public HaProxyLoadBalancer(LoadBalancerConfig config)
         {
@@ -46,7 +46,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             _waitTimeInSecondsAfterSettingServerStateToOnline = config.CustomConfig.WaitTimeInSecondsAfterSettingServerStateToOnline ?? config.CustomConfig.WaitTimeInSecondsAfterMaintenanceModeChanged ?? 5;
         }
 
-        public void BringOffline(string serverName, string farm, LoadBalancerSuspendMethod suspendMethod, IReportStatus status)
+        public Result BringOffline(string serverName, string farm, LoadBalancerSuspendMethod suspendMethod)
         {
             var result = ChangeServerState(serverName, farm, ServerState.Offline);
 
@@ -58,9 +58,10 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
 
             Logger.Verbose("Waiting for server connections to drain.");
             WaitForCurrentConnectionsToDrain(farm, serverName, _snmpEndpoint, _snmpPort, _snmpCommunity, DateTime.Now.AddSeconds(_config.TimeoutInSeconds));
+            return new Result(true, false);
         }
 
-        public void BringOnline(string serverName, string farm, IReportStatus status)
+        public Result BringOnline(string serverName, string farm)
         {
             var result = ChangeServerState(serverName, farm, ServerState.Online);
 
@@ -69,6 +70,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
 
             Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to get server out of maintenance mode.", _waitTimeInSecondsAfterSettingServerStateToOnline));
             Thread.Sleep(_waitTimeInSecondsAfterSettingServerStateToOnline * 1000);
+            return new Result(true, false);
         }
 
         private static string GetServerStateCommand(ServerState serverState)
