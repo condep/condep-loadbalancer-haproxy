@@ -42,8 +42,10 @@ Task("build").Does(() =>
 Task("version-exists-check").Does(() =>
 {
 	var version = GetAssemblyVersion("../src/"+projectIdentifier+"/Properties/AssemblyInfo.cs");
+	Console.WriteLine("Got version: " + version);
 	var versionExists = IsNuGetPublished(projectIdentifier, version, "https://www.myget.org/F/condep/api/v2");
-
+	Console.WriteLine("Version exists: " + versionExists);
+	
 	if(versionExists)
 	{
 		throw new System.Exception(projectIdentifier + " " + version + " already exists on myget. Have you forgot to update version in appveyor.yml?");
