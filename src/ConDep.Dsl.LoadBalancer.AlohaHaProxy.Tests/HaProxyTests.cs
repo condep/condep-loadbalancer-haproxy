@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
@@ -11,6 +12,7 @@ using log4net;
 using log4net.Appender;
 using log4net.Core;
 using log4net.Repository.Hierarchy;
+using Mock4Net.Core;
 using NUnit.Framework;
 using Logger = ConDep.Dsl.Logging.Logger;
 
@@ -85,6 +87,8 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests
         }
 
         private LoadBalancerConfig _config;
+        private FluentMockServer _server;
+
         private UnitTestLogger CreateMemoryLogger()
         {
             var memAppender = new MemoryAppender { Name = "MemoryAppender" };
@@ -101,10 +105,11 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests
         [SetUp]
         public void Setup()
         {
+            _server = FluentMockServer.Start();
             _config = new LoadBalancerConfig
             {
 
-                Name = "loadbalancer",
+                Name = "http://localhost:" + _server.Port,
                 Provider = "ConDep.Dsl.LoadBalancer.AlohaHaProxy.dll",
                 UserName = "username",
                 Password = "password",
@@ -120,13 +125,61 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests
             _config.CustomConfig.WaitTimeInSecondsAfterSettingServerStateToOnline = 2;
             Logger.Initialize(CreateMemoryLogger());
         }
+        
+        [Test]
+        public void TestThat_StateCanBeFetchedForOffline()
+        {
+            _server
+                .Given(
+                    Requests.WithUrl("/api/2/scope/root/l7/farm/thefarm/server/theserver")
+                )
+                .RespondWith(
+                    Responses
+                        .WithStatusCode(200)
+                        .WithBody(@"{
+	""address"": ""0.0.0.0"",
+
+            ""port"": ""0"",
+            ""max_connections"": ""1000"",
+            ""weight"": ""10"",
+            ""http_cookie_id"": ""theserver"",
+            ""sorry"": null,
+            ""check"": ""enabled"",
+            ""maintenance"": ""enabled"",
+            ""ssl"": ""enabled""
+        }")
+                );
+            var lb = new HaProxyLoadBalancer(_config);
+            var result = lb.GetServerState("theserver", "thefarm");
+            Assert.AreEqual(result, HaProxyLoadBalancer.ServerState.Offline);
+        }
 
         [Test]
-        public void TestThat_StateCanBeFetched()
+        public void TestThat_StateCanBeFetchedForOnline()
         {
+            _server
+                .Given(
+                    Requests.WithUrl("/api/2/scope/root/l7/farm/thefarm/server/theserver")
+                )
+                .RespondWith(
+                    Responses
+                        .WithStatusCode(200)
+                        .WithBody(@"{
+	""address"": ""0.0.0.0"",
+
+            ""port"": ""0"",
+            ""max_connections"": ""1000"",
+            ""weight"": ""10"",
+            ""http_cookie_id"": ""theserver"",
+            ""sorry"": null,
+            ""check"": ""enabled"",
+            ""maintenance"": null,
+            ""ssl"": ""enabled""
+        }")
+                );
             var lb = new HaProxyLoadBalancer(_config);
-            var result = lb.GetServerState("server", "farm");
-            Assert.True(result == HaProxyLoadBalancer.ServerState.Online);
+            var result = lb.GetServerState("theserver", "thefarm");
+            Assert.AreEqual(result, HaProxyLoadBalancer.ServerState.Online);
         }
     }
 }
