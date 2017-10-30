@@ -22,12 +22,6 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
         private readonly int _waitTimeInSecondsAfterSettingServerStateToOnline;
         private HttpClient _client;
 
-        public enum ServerState
-        {
-            Online,
-            Offline
-        }
-
         LoadBalancerMode ILoadBalance.Mode { get; set; }
 
         public HaProxyLoadBalancer(LoadBalancerConfig config)
@@ -53,7 +47,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
 
         public Result BringOffline(string serverName, string farm, LoadBalancerSuspendMethod suspendMethod)
         {
-            var result = ChangeServerState(serverName, farm, ServerState.Offline);
+            var result = ChangeServerState(serverName, farm, LoadBalanceState.Offline);
 
             if (!result.IsSuccessStatusCode)
                 throw new ConDepLoadBalancerException(string.Format("Failed to take server {0} offline in loadbalancer. Returned status code was {1} with reason: {2}", serverName, result.StatusCode, result.ReasonPhrase));
@@ -68,7 +62,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
 
         public Result BringOnline(string serverName, string farm)
         {
-            var result = ChangeServerState(serverName, farm, ServerState.Online);
+            var result = ChangeServerState(serverName, farm, LoadBalanceState.Online);
 
             if (!result.IsSuccessStatusCode)
                 throw new ConDepLoadBalancerException(string.Format("Failed to take server {0} online in loadbalancer. Returned status code was {1} with reason: {2}", serverName, result.StatusCode, result.ReasonPhrase));
@@ -78,20 +72,20 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             return new Result(true, false);
         }
 
-        private static string GetServerStateCommand(ServerState serverState)
+        private static string GetServerStateCommand(LoadBalanceState serverState)
         {
             switch (serverState)
             {
-                case ServerState.Offline:
+                case LoadBalanceState.Offline:
                     return "\"enabled\"";
-                case ServerState.Online:
+                case LoadBalanceState.Online:
                     return "null";
             }
 
             throw new ConDepLoadBalancerException("Server state for command unknown");
         }
 
-        private HttpResponseMessage ChangeServerState(string serverName, string farm, ServerState serverState)
+        private HttpResponseMessage ChangeServerState(string serverName, string farm, LoadBalanceState serverState)
         {
             var cmd = GetServerStateCommand(serverState);
             Logger.Verbose("Connecting to load balancer using " + _client.BaseAddress);
@@ -109,7 +103,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
         }
 
 
-        public ServerState GetServerState(string serverName, string farm)
+        public LoadBalanceState GetServerState(string serverName, string farm)
         {
             Logger.Verbose("Connecting to load balancer using " + _client.BaseAddress.AbsoluteUri);
 
@@ -128,9 +122,9 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             switch (maintenanceState)
             {
                 case "enabled":
-                    return ServerState.Offline;
+                    return LoadBalanceState.Offline;
                 case null:
-                    return ServerState.Online;
+                    return LoadBalanceState.Online;
                 default:
                     throw new ConDepLoadBalancerException($@"Unknown maintenance state ""{maintenanceState}""");
             }

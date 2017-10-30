@@ -151,7 +151,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests
                 );
             var lb = new HaProxyLoadBalancer(_config);
             var result = lb.GetServerState("theserver", "thefarm");
-            Assert.AreEqual(result, HaProxyLoadBalancer.ServerState.Offline);
+            Assert.AreEqual(result, LoadBalanceState.Offline);
         }
 
         [Test]
@@ -179,7 +179,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy.Tests
                 );
             var lb = new HaProxyLoadBalancer(_config);
             var result = lb.GetServerState("theserver", "thefarm");
-            Assert.AreEqual(result, HaProxyLoadBalancer.ServerState.Online);
+            Assert.AreEqual(result, LoadBalanceState.Online);
         }
     }
 }
