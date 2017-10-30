@@ -1,4 +1,4 @@
-version: 5.0.1.{build}
+version: 5.0.2-beta{build}
 branches:
   only:
   - master
@@ -13,7 +13,7 @@ assembly_info:
   assembly_file_version: "$(assembly_file_version)"
   assembly_informational_version: "$(assembly_informational_version)"
 build_script:
-- ps: .\build.ps1
+- ps: .\build\build.ps1
 artifacts:
 - path: .\build\output\**\*.nupkg
   name: NuGet   

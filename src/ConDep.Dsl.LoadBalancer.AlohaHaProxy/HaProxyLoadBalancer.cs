@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using ConDep.Dsl.Config;
 using ConDep.Dsl.Logging;
 using SnmpSharpNet;
+using Newtonsoft.Json.Linq;
 
 namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
 {
@@ -18,8 +20,9 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
         private readonly string _snmpCommunity;
         private readonly int _waitTimeInSecondsAfterSettingServerStateToOffline;
         private readonly int _waitTimeInSecondsAfterSettingServerStateToOnline;
+        private HttpClient _client;
 
-        private enum ServerState
+        public enum ServerState
         {
             Online,
             Offline
@@ -44,6 +47,8 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
 
             _waitTimeInSecondsAfterSettingServerStateToOffline = config.CustomConfig.WaitTimeInSecondsAfterSettingServerStateToOffline ?? config.CustomConfig.WaitTimeInSecondsAfterMaintenanceModeChanged ?? 5;
             _waitTimeInSecondsAfterSettingServerStateToOnline = config.CustomConfig.WaitTimeInSecondsAfterSettingServerStateToOnline ?? config.CustomConfig.WaitTimeInSecondsAfterMaintenanceModeChanged ?? 5;
+
+            _client = new HttpClient { BaseAddress = new Uri(_config.Name) };
         }
 
         public Result BringOffline(string serverName, string farm, LoadBalancerSuspendMethod suspendMethod)
@@ -53,7 +58,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             if (!result.IsSuccessStatusCode)
                 throw new ConDepLoadBalancerException(string.Format("Failed to take server {0} offline in loadbalancer. Returned status code was {1} with reason: {2}", serverName, result.StatusCode, result.ReasonPhrase));
 
-            Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to set server i maintenance mode.", _waitTimeInSecondsAfterSettingServerStateToOffline));
+            Logger.Verbose(string.Format("Waiting {0} seconds to give load balancer a chance to set server in maintenance mode.", _waitTimeInSecondsAfterSettingServerStateToOffline));
             Thread.Sleep(_waitTimeInSecondsAfterSettingServerStateToOffline * 1000);
 
             Logger.Verbose("Waiting for server connections to drain.");
@@ -89,8 +94,7 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
         private HttpResponseMessage ChangeServerState(string serverName, string farm, ServerState serverState)
         {
             var cmd = GetServerStateCommand(serverState);
-            var client = new HttpClient {BaseAddress = new Uri(_config.Name)};
-            Logger.Verbose("Connecting to load balancer using " + client.BaseAddress);
+            Logger.Verbose("Connecting to load balancer using " + _client.BaseAddress);
 
             var request = new HttpRequestMessage(HttpMethod.Put,_config.Name + "/api/2/scope/" + _scope + "/l7/farm/" + farm + "/server/" + serverName);
             Logger.Verbose("Executing PUT command to " + request.RequestUri);
@@ -99,9 +103,37 @@ namespace ConDep.Dsl.LoadBalancer.AlohaHaProxy
             request.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", _config.UserName, _config.Password))));
             request.Content = new StringContent(string.Format("{{ \"maintenance\" : {0} }}", cmd), Encoding.ASCII, "application/json");
 
-            var result = client.SendAsync(request).Result;
+            var result = _client.SendAsync(request).Result;
 
             return result;
+        }
+
+
+        public ServerState GetServerState(string serverName, string farm)
+        {
+            Logger.Verbose("Connecting to load balancer using " + _client.BaseAddress.AbsoluteUri);
+
+            var request = new HttpRequestMessage(HttpMethod.Get, _config.Name + "/api/2/scope/" + _scope + "/l7/farm/" + farm + "/server/" + serverName);
+            Logger.Verbose("Executing GET command to " + request.RequestUri);
+
+            request.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("application/json"));
+            request.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", _config.UserName, _config.Password))));
+            var response = _client.SendAsync(request).Result;
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new ConDepLoadBalancerException($"An error occurred while getting server state. The load balancer responded with {(int)response.StatusCode} '{response.ReasonPhrase}'.");
+            }
+            JObject resultObject = JObject.Parse(response.Content.ReadAsStringAsync().Result);
+            string maintenanceState = (string)resultObject["maintenance"];
+            switch (maintenanceState)
+            {
+                case "enabled":
+                    return ServerState.Offline;
+                case null:
+                    return ServerState.Online;
+                default:
+                    throw new ConDepLoadBalancerException($@"Unknown maintenance state ""{maintenanceState}""");
+            }
         }
 
         private const string FARM_NAMES_OID          = ".1.3.6.1.4.1.23263.4.2.1.3.3.1.3";
