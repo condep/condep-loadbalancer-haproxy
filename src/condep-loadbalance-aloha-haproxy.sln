@@ -9,6 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConDep.Dsl.LoadBalancer.Alo
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{D2F6D06F-F6FE-4CE0-9FF2-6AC8DA550534}"
 	ProjectSection(SolutionItems) = preProject
+		..\appveyor.yml = ..\appveyor.yml
 		..\build\bootstrapper.ps1 = ..\build\bootstrapper.ps1
 		..\build\build.cake = ..\build\build.cake
 		..\build\build.ps1 = ..\build\build.ps1
