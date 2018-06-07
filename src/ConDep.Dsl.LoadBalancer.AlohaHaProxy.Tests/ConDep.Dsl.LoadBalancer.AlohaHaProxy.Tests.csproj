@@ -34,8 +34,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ConDep.Dsl, Version=5.0.5.57, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\ConDep.Dsl.5.0.5-beta00057\lib\net45\ConDep.Dsl.dll</HintPath>
+    <Reference Include="ConDep.Dsl, Version=5.0.5.61, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\ConDep.Dsl.5.0.5-beta00061\lib\net45\ConDep.Dsl.dll</HintPath>
     </Reference>
     <Reference Include="log4net">
       <HintPath>..\packages\log4net.2.0.0\lib\net40-full\log4net.dll</HintPath>
@@ -43,9 +43,8 @@
     <Reference Include="Mock4Net.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Mock4Net.Core.1.0.0-v20150608-4f463ad\lib\net45\Mock4Net.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.6.0.6\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="nunit.framework, Version=3.10.1.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
       <HintPath>..\packages\NUnit.3.10.1\lib\net45\nunit.framework.dll</HintPath>
